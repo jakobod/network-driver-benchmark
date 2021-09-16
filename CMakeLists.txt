@@ -28,13 +28,18 @@ add_subdirectory(${network-driver_SOURCE_DIR} ${network-driver_BINARY_DIR})
 
 set(LIB_NET_BENCHMARK_SOURCES
   src/benchmark/mirror_manager.cpp
+  src/benchmark/output_manager.cpp
 )
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 macro(add_target name)
-  add_executable(${name} "src/${name}.cpp")
-  target_include_directories(${name} PRIVATE "${network-driver_SOURCE_DIR}/header")
+  add_executable(${name} 
+                 "src/${name}.cpp"
+                 ${LIB_NET_BENCHMARK_SOURCES})
+  target_include_directories(${name} PRIVATE 
+                             "${network-driver_SOURCE_DIR}/header"
+                             "${CMAKE_CURRENT_SOURCE_DIR}/header")
   target_link_libraries(${name} PRIVATE net)
 endmacro()
 

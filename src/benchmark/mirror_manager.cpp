@@ -5,6 +5,7 @@
 
 #include "benchmark/mirror_manager.hpp"
 
+#include <iostream>
 #include <span>
 
 #include "net/multiplexer.hpp"
@@ -16,7 +17,11 @@ using namespace net;
 
 mirror_manager::mirror_manager(net::socket handle, multiplexer* mpx)
   : socket_manager(handle, mpx) {
-  // nop
+  nonblocking(handle, true);
+}
+
+net::error mirror_manager::init() {
+  return none;
 }
 
 bool mirror_manager::handle_read_event() {
@@ -41,14 +46,16 @@ bool mirror_manager::handle_read_event() {
 }
 
 bool mirror_manager::handle_write_event() {
+  auto done_writing = [&]() { return byte_diff_ == 0; };
   for (int i = 0; i < 20; ++i) {
     auto num_bytes = std::min(byte_diff_, buf_.size());
     auto write_res = write(handle<stream_socket>(),
                            std::span(buf_.data(), num_bytes));
     if (write_res > 0) {
       byte_diff_ -= write_res;
-      return byte_diff_ == 0;
-    } else if (write_res <= 0) {
+      if (done_writing())
+        return false;
+    } else if (write_res < 0) {
       if (last_socket_error_is_temporary())
         return true;
       else
@@ -57,7 +64,11 @@ bool mirror_manager::handle_write_event() {
                 "[mirror_manager.write()] " + last_socket_error_as_string()));
     }
   }
-  return byte_diff_ == 0;
+  return !done_writing();
+}
+
+bool mirror_manager::handle_timeout(uint64_t) {
+  return false;
 }
 
 } // namespace benchmark
