@@ -35,27 +35,27 @@ net::error output_manager::init() {
   return none;
 }
 
-bool output_manager::handle_read_event() {
+event_result output_manager::handle_read_event() {
   for (size_t i = 0; i < max_consecutive_reads; ++i) {
     auto read_res = read(handle<stream_socket>(), receive_buf_);
     if (read_res == 0)
-      return false;
+      return event_result::error;
     if (read_res < 0) {
       if (last_socket_error_is_temporary()) {
-        return true;
+        return event_result::ok;
       } else {
         mpx()->handle_error(
           error(socket_operation_failed,
                 "[output_manager.read()] " + last_socket_error_as_string()));
-        return false;
+        return event_result::error;
       }
     }
     bytes_received_ += read_res;
   }
-  return true;
+  return event_result::ok;
 }
 
-bool output_manager::handle_write_event() {
+event_result output_manager::handle_write_event() {
   auto done_writing = [&]() { return bytes_written_ == byte_per_second_; };
   for (size_t i = 0; i < max_consecutive_writes; ++i) {
     auto missing_bytes = byte_per_second_ - bytes_written_;
@@ -67,29 +67,29 @@ bool output_manager::handle_write_event() {
     if (write_res > 0) {
       bytes_written_ += write_res;
       if (done_writing())
-        return false;
+        return event_result::done;
     } else if (write_res < 0) {
       if (last_socket_error_is_temporary()) {
-        return !done_writing();
+        return event_result::ok;
       } else {
         mpx()->handle_error(
           error(socket_operation_failed,
                 "[output_manager.write()] " + last_socket_error_as_string()));
-        return false;
+        return event_result::error;
       }
     }
   }
-  return !done_writing();
+  return done_writing() ? event_result::done : event_result::ok;
 }
 
-bool output_manager::handle_timeout(uint64_t) {
+event_result output_manager::handle_timeout(uint64_t) {
   set_timeout_in(1s, 0);
   std::cerr << "[output_manager] sent = " << bytes_written_
             << " byte, received = " << bytes_received_ << " byte" << std::endl;
   bytes_received_ = 0;
   bytes_written_ = 0;
   register_writing();
-  return true;
+  return event_result::ok;
 }
 
 } // namespace benchmark

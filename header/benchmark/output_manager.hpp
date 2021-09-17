@@ -6,6 +6,7 @@
 #pragma once
 
 #include "fwd.hpp"
+#include "net/event_result.hpp"
 #include "net/socket_manager.hpp"
 #include "net/socket_manager_factory.hpp"
 
@@ -22,11 +23,11 @@ public:
 
   // -- event handling ---------------------------------------------------------
 
-  bool handle_read_event() override;
+  net::event_result handle_read_event() override;
 
-  bool handle_write_event() override;
+  net::event_result handle_write_event() override;
 
-  bool handle_timeout(uint64_t timeout_id) override;
+  net::event_result handle_timeout(uint64_t timeout_id) override;
 
 private:
   const size_t byte_per_second_;
