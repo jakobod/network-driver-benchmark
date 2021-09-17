@@ -6,6 +6,7 @@
 #include "fwd.hpp"
 #include "net/epoll_multiplexer.hpp"
 #include "net/tcp_stream_socket.hpp"
+#include "util/prbs.hpp"
 
 using namespace net;
 using namespace benchmark;
@@ -47,15 +48,23 @@ multiplexer_ptr make_server() {
 }
 
 int main(int, char**) {
-  auto server_mpx = make_server();
-  auto client_mpx = make_client(1, server_mpx->port(), 10'000'000'000);
-  std::string dummy;
-  std::getline(std::cin, dummy);
-  std::cout << "[main] shutting down..." << std::endl;
-  server_mpx->shutdown();
-  client_mpx->shutdown();
-  std::cout << "[main] joining..." << std::endl;
-  server_mpx->join();
-  client_mpx->join();
-  std::cout << "[main] done. BYE!" << std::endl;
+  util::byte_array<2000> buf;
+  util::prbs gen;
+  gen.create_sequence(buf);
+  if (gen.check_sequence(buf))
+    std::cout << "SEQUENCE MATCHES" << std::endl;
+  else
+    std::cout << "WRONG SEQUENCE" << std::endl;
+
+  // auto server_mpx = make_server();
+  // auto client_mpx = make_client(1, server_mpx->port(), 10'000'000'000);
+  // std::string dummy;
+  // std::getline(std::cin, dummy);
+  // std::cout << "[main] shutting down..." << std::endl;
+  // server_mpx->shutdown();
+  // client_mpx->shutdown();
+  // std::cout << "[main] joining..." << std::endl;
+  // server_mpx->join();
+  // client_mpx->join();
+  // std::cout << "[main] done. BYE!" << std::endl;
 }

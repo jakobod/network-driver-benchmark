@@ -29,6 +29,7 @@ add_subdirectory(${network-driver_SOURCE_DIR} ${network-driver_BINARY_DIR})
 set(LIB_NET_BENCHMARK_SOURCES
   src/benchmark/mirror_manager.cpp
   src/benchmark/output_manager.cpp
+  src/util/prbs.cpp
 )
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
