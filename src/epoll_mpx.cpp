@@ -4,6 +4,7 @@
 
 #include "benchmark/application/mirror.hpp"
 #include "benchmark/application/output.hpp"
+#include "benchmark/result.hpp"
 #include "fwd.hpp"
 #include "net/epoll_multiplexer.hpp"
 #include "net/manager/stream.hpp"
@@ -38,9 +39,10 @@ multiplexer_ptr make_client(size_t num_clients, uint16_t port, size_t bps) {
   if (auto err = get_error(mpx_res))
     exit(*err);
   auto mpx = std::get<multiplexer_ptr>(mpx_res);
+  auto results = make_result(num_clients);
   for (size_t num = 0; num < num_clients; ++num)
-    if (auto err = mpx->tcp_connect<output_manager>("127.0.0.1", port,
-                                                    operation::read_write, bps))
+    if (auto err = mpx->tcp_connect<output_manager>(
+          "127.0.0.1", port, operation::read_write, results, bps))
       exit(err);
   mpx->start();
   return mpx;

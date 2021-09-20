@@ -7,6 +7,7 @@
 
 #include <chrono>
 
+#include "benchmark/result.hpp"
 #include "fwd.hpp"
 #include "net/error.hpp"
 #include "net/event_result.hpp"
@@ -14,7 +15,8 @@
 namespace benchmark::application {
 
 struct output {
-  output(size_t byte_per_second) : byte_per_second_(byte_per_second) {
+  output(result_ptr results, size_t byte_per_second)
+    : results_(std::move(results)), byte_per_second_(byte_per_second) {
     uint8_t b = 0;
     for (size_t i = 0; i < 256; ++i)
       data_.emplace_back(std::byte(b++));
@@ -52,8 +54,7 @@ struct output {
   net::event_result handle_timeout(Parent& parent, uint64_t) {
     using namespace std::chrono_literals;
     parent.set_timeout_in(1s, 0);
-    std::cerr << "[output] created = " << byte_produced_
-              << ", received = " << byte_received_ << " byte" << std::endl;
+    results_->update(byte_produced_, byte_received_);
     byte_received_ = 0;
     byte_produced_ = 0;
     parent.register_writing();
@@ -61,6 +62,7 @@ struct output {
   }
 
 private:
+  result_ptr results_;
   util::byte_buffer data_;
   const size_t byte_per_second_;
   size_t byte_produced_ = 0;
