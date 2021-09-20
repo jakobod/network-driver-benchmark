@@ -1,7 +1,6 @@
 #include <chrono>
 #include <iostream>
 
-#include "benchmark/mirror_manager.hpp"
 #include "benchmark/output_manager.hpp"
 #include "fwd.hpp"
 #include "net/epoll_multiplexer.hpp"

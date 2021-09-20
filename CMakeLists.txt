@@ -30,10 +30,7 @@ add_subdirectory(${network-driver_SOURCE_DIR} ${network-driver_BINARY_DIR})
 file(GLOB_RECURSE LIB_NET_BENCHMARK_HEADERS 
      "${CMAKE_CURRENT_SOURCE_DIR}/header/*.hpp")
 
-set(LIB_NET_BENCHMARK_SOURCES
-  src/benchmark/mirror_manager.cpp
-  src/benchmark/output_manager.cpp
-)
+set(LIB_NET_BENCHMARK_SOURCES)
 
 add_library(benchmark_obj OBJECT
             ${LIB_NET_BENCHMARK_HEADERS} ${LIB_NET_BENCHMARK_SOURCES})
@@ -53,4 +50,4 @@ macro(add_target name)
 endmacro()
 
 add_target(epoll_mpx)
-add_target(multithreaded_epoll_mpx)
+# add_target(multithreaded_epoll_mpx)
