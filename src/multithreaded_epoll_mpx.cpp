@@ -1,4 +1,5 @@
 #include <chrono>
+#include <cstdlib>
 #include <iostream>
 #include <limits>
 
@@ -60,9 +61,22 @@ multiplexer_ptr make_server(size_t num_threads) {
   return mpx;
 }
 
-int main(int, char**) {
-  size_t num_clients = 100;
-  size_t num_threads = 2;
+int main(int num_args, char** args) {
+  size_t num_clients = 1;
+  size_t num_threads = 1;
+
+  for (int i = 1; i < num_args; ++i) {
+    auto flag = std::string(args[i]);
+    if (flag == "-t" || flag == "--threads")
+      num_threads = atoi(args[++i]);
+    else if (flag == "-c" || flag == "--clients")
+      num_clients = atoi(args[++i]);
+    else
+      exit("unrecognized argument " + flag);
+  }
+  std::cout << "running multithreaded benchmark using " << num_clients
+            << " clients and " << num_threads << " num_threads = " << std::endl;
+
   auto server_mpx = make_server(num_threads);
   auto client_mpx = make_client(num_clients, num_threads, server_mpx->port(),
                                 unlimited);

@@ -25,7 +25,6 @@ struct output {
   template <class Parent>
   net::error init(Parent& parent) {
     using namespace std::chrono_literals;
-    std::cerr << "output: init called" << std::endl;
     parent.configure_next_read(net::receive_policy::up_to(8096));
     parent.set_timeout_in(1s, 0);
     return net::none;
