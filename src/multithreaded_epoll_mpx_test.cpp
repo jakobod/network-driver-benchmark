@@ -3,7 +3,7 @@
 #include <iostream>
 #include <limits>
 
-#include "benchmark/application/mirror.hpp"
+#include "benchmark/application/drop.hpp"
 #include "benchmark/application/output.hpp"
 #include "benchmark/result.hpp"
 #include "fwd.hpp"
@@ -26,16 +26,16 @@ static constexpr size_t unlimited = std::numeric_limits<size_t>::max();
   exit(to_string(err));
 }
 
-struct mirror_manager_factory : public socket_manager_factory {
+struct drop_manager_factory : public socket_manager_factory {
   socket_manager_ptr make(net::socket handle, multiplexer* mpx) override {
-    using mirror_manager = manager::stream<application::mirror>;
+    using mirror_manager = manager::stream<application::drop>;
     return std::make_shared<mirror_manager>(socket_cast<stream_socket>(handle),
                                             mpx);
   }
 };
 
 multiplexer_ptr make_server(size_t num_threads) {
-  auto factory = std::make_shared<mirror_manager_factory>();
+  auto factory = std::make_shared<drop_manager_factory>();
   auto mpx_res = make_multithreaded_epoll_multiplexer(std::move(factory),
                                                       num_threads);
   if (auto err = get_error(mpx_res))
@@ -64,14 +64,13 @@ int main(int num_args, char** args) {
   auto server_mpx = make_server(num_threads);
   std::this_thread::sleep_for(500ms);
   std::cerr << "multiplexer should run now" << std::endl;
-  std::string dummy;
   std::cerr << "[ctrl-D] quits, anything else adds more managers" << std::endl;
   std::vector<tcp_stream_socket> sockets;
-  std::getline(std::cin, dummy);
   sockets.emplace_back(std::get<tcp_stream_socket>(
     net::make_connected_tcp_stream_socket("127.0.0.1", server_mpx->port())));
 
   std::cerr << "writing data now" << std::endl;
+  std::string dummy;
   util::byte_array<256> data;
   while (std::getline(std::cin, dummy))
     write(sockets.back(), data);
