@@ -7,7 +7,6 @@
 #include "benchmark/application/output.hpp"
 #include "benchmark/result.hpp"
 #include "fwd.hpp"
-#include "net/epoll_multiplexer.hpp"
 #include "net/manager/stream.hpp"
 #include "net/multithreaded_epoll_multiplexer.hpp"
 #include "net/socket_manager_factory.hpp"
@@ -34,22 +33,6 @@ struct mirror_manager_factory : public socket_manager_factory {
                                             mpx);
   }
 };
-
-multiplexer_ptr make_client(size_t num_clients, size_t num_threads,
-                            uint16_t port, size_t bps) {
-  using output_manager = manager::stream<application::output>;
-  auto mpx_res = make_epoll_multiplexer(nullptr);
-  if (auto err = get_error(mpx_res))
-    exit(*err);
-  auto mpx = std::get<multiplexer_ptr>(mpx_res);
-  auto results = make_result(num_clients);
-  for (size_t num = 0; num < num_clients; ++num)
-    if (auto err = mpx->tcp_connect<output_manager>(
-          "127.0.0.1", port, operation::read_write, results, bps))
-      exit(err);
-  mpx->start();
-  return mpx;
-}
 
 multiplexer_ptr make_server(size_t num_threads) {
   auto factory = std::make_shared<mirror_manager_factory>();
@@ -79,14 +62,23 @@ int main(int num_args, char** args) {
             << " clients and " << num_threads << " num_threads = " << std::endl;
 
   auto server_mpx = make_server(num_threads);
-  auto client_mpx = make_client(num_clients, 1, server_mpx->port(), unlimited);
+  std::this_thread::sleep_for(500ms);
+  std::cerr << "multiplexer should run now" << std::endl;
   std::string dummy;
+  std::cerr << "[ctrl-D] quits, anything else adds more managers" << std::endl;
+  std::vector<tcp_stream_socket> sockets;
   std::getline(std::cin, dummy);
+  sockets.emplace_back(std::get<tcp_stream_socket>(
+    net::make_connected_tcp_stream_socket("127.0.0.1", server_mpx->port())));
+
+  std::cerr << "writing data now" << std::endl;
+  util::byte_array<256> data;
+  while (std::getline(std::cin, dummy))
+    write(sockets.back(), data);
+
   std::cout << "[main] shutting down..." << std::endl;
   server_mpx->shutdown();
-  client_mpx->shutdown();
   std::cout << "[main] joining..." << std::endl;
   server_mpx->join();
-  client_mpx->join();
   std::cout << "[main] done. BYE!" << std::endl;
 }

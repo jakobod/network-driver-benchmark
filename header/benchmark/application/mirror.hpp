@@ -27,8 +27,11 @@ struct mirror {
   template <class Parent>
   net::event_result produce(Parent& parent) {
     auto& buf = parent.write_buffer();
-    buf.insert(buf.end(), received_.begin(), received_.end());
-    received_.clear();
+    {
+      std::lock_guard<std::mutex> guard(lock_);
+      buf.insert(buf.end(), received_.begin(), received_.end());
+      received_.clear();
+    }
     return net::event_result::ok;
   }
 
@@ -38,7 +41,10 @@ struct mirror {
 
   template <class Parent>
   net::event_result consume(Parent& parent, util::const_byte_span data) {
-    received_.insert(received_.end(), data.begin(), data.end());
+    {
+      std::lock_guard<std::mutex> guard(lock_);
+      received_.insert(received_.end(), data.begin(), data.end());
+    }
     parent.configure_next_read(net::receive_policy::up_to(8096));
     parent.register_writing();
     return net::event_result::ok;
@@ -51,6 +57,7 @@ struct mirror {
 
 private:
   util::byte_buffer received_;
+  std::mutex lock_;
 };
 
 } // namespace benchmark::application
