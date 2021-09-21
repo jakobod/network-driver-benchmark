@@ -36,8 +36,6 @@ struct drop {
   template <class Parent>
   net::event_result consume(Parent& parent, util::const_byte_span) {
     parent.configure_next_read(net::receive_policy::up_to(8096));
-    parent.write_buffer().resize(1);
-    parent.register_writing();
     return net::event_result::ok;
   }
 
