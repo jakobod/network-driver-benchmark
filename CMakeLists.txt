@@ -15,6 +15,8 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 add_compile_options(-Wall -Wextra -pedantic)
 
+message (STATUS "Build type ${CMAKE_BUILD_TYPE}")
+
 # -- fetch network-driver repo -------------------------------------------------
 
 FetchContent_Declare(
@@ -22,8 +24,16 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/jakobod/network-driver.git
   GIT_TAG        master
 )
-FetchContent_Populate(network-driver)
-add_subdirectory(${network-driver_SOURCE_DIR} ${network-driver_BINARY_DIR})
+FetchContent_MakeAvailable(network-driver)
+
+# -- fetch network-driver repo -------------------------------------------------
+
+FetchContent_Declare(
+  googlebenchmark
+  GIT_REPOSITORY https://github.com/google/benchmark.git
+  GIT_TAG master)
+set(BENCHMARK_ENABLE_GTEST_TESTS OFF)
+FetchContent_MakeAvailable(googlebenchmark)
 
 # -- create obj ----------------------------------------------------------------
 
@@ -32,12 +42,38 @@ file(GLOB_RECURSE LIB_NET_BENCHMARK_HEADERS
 
 set(LIB_NET_BENCHMARK_SOURCES)
 
-add_library(benchmark_obj OBJECT
+add_library(lib_net_benchmark_obj OBJECT
             ${LIB_NET_BENCHMARK_HEADERS} ${LIB_NET_BENCHMARK_SOURCES})
-set_property(TARGET benchmark_obj PROPERTY POSITION_INDEPENDENT_CODE ON)
-target_include_directories(benchmark_obj PRIVATE
+set_property(TARGET lib_net_benchmark_obj PROPERTY POSITION_INDEPENDENT_CODE ON)
+target_include_directories(lib_net_benchmark_obj PRIVATE
                            "${network-driver_SOURCE_DIR}/header"
                            "${CMAKE_CURRENT_SOURCE_DIR}/header")
+
+# -- add benchmark -------------------------------------------------------------
+
+add_executable(
+  lib_net_benchmark
+  src/sending.cpp
+)
+
+target_include_directories(lib_net_benchmark PRIVATE                              
+  "${network-driver_SOURCE_DIR}/header"
+  "${CMAKE_CURRENT_SOURCE_DIR}/header")
+
+target_link_libraries(lib_net_benchmark PRIVATE 
+  benchmark::benchmark
+  benchmark::benchmark_main
+  net
+  lib_net_benchmark_obj
+)
+
+# Allows issuing `make bench` to build and run the benchmarks in a single command
+add_custom_target(
+  bench
+  COMMAND "${CMAKE_CURRENT_BINARY_DIR}/lib_net_benchmark"
+  DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/lib_net_benchmark"
+  COMMENT "Run the benchmarks"
+)
 
 # -- add executables -----------------------------------------------------------
 
@@ -46,8 +82,10 @@ macro(add_target name)
   target_include_directories(${name} PRIVATE 
                              "${network-driver_SOURCE_DIR}/header"
                              "${CMAKE_CURRENT_SOURCE_DIR}/header")
-  target_link_libraries(${name} PRIVATE net benchmark_obj)
+  target_link_libraries(${name} PRIVATE net lib_net_benchmark_obj)
 endmacro()
+
+
 
 add_target(epoll_mpx)
 # add_target(multithreaded_epoll_mpx)
