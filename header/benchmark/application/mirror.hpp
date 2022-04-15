@@ -5,59 +5,56 @@
 
 #pragma once
 
-#include "fwd.hpp"
+#include "net/fwd.hpp"
 
-#include "net/error.hpp"
+#include "net/application.hpp"
 #include "net/event_result.hpp"
+#include "net/layer.hpp"
 #include "net/receive_policy.hpp"
+
+#include "util/byte_span.hpp"
+#include "util/error.hpp"
 
 namespace benchmark::application {
 
-struct mirror {
-  mirror() {
+class mirror : public net::application {
+  static constexpr const std::size_t max_read_amount = 8096;
+
+public:
+  mirror(net::layer& parent) : parent_{parent} {
     // nop
   }
 
-  template <class Parent>
-  net::error init(Parent& parent) {
-    parent.configure_next_read(net::receive_policy::up_to(8096));
-    return net::none;
+  util::error init() override {
+    parent_.configure_next_read(net::receive_policy::up_to(max_read_amount));
+    return util::none;
   }
 
-  template <class Parent>
-  net::event_result produce(Parent& parent) {
-    auto& buf = parent.write_buffer();
-    {
-      std::lock_guard<std::mutex> guard(lock_);
-      buf.insert(buf.end(), received_.begin(), received_.end());
-      received_.clear();
-    }
-    return net::event_result::ok;
-  }
-
-  bool has_more_data() {
+  bool has_more_data() override {
     return !received_.empty();
   }
 
-  template <class Parent>
-  net::event_result consume(Parent& parent, util::const_byte_span data) {
-    {
-      std::lock_guard<std::mutex> guard(lock_);
-      received_.insert(received_.end(), data.begin(), data.end());
-    }
-    parent.configure_next_read(net::receive_policy::up_to(8096));
-    parent.register_writing();
+  net::event_result produce() override {
+    auto& buf = parent_.write_buffer();
+    buf.insert(buf.end(), received_.begin(), received_.end());
+    received_.clear();
     return net::event_result::ok;
   }
 
-  template <class Parent>
-  net::event_result handle_timeout(Parent&, uint64_t) {
+  net::event_result consume(util::const_byte_span data) override {
+    received_.insert(received_.end(), data.begin(), data.end());
+    parent_.configure_next_read(net::receive_policy::up_to(max_read_amount));
+    parent_.register_writing();
+    return net::event_result::ok;
+  }
+
+  net::event_result handle_timeout(uint64_t) override {
     return net::event_result::ok;
   }
 
 private:
+  net::layer& parent_;
   util::byte_buffer received_;
-  std::mutex lock_;
 };
 
 } // namespace benchmark::application

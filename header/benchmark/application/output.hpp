@@ -5,65 +5,67 @@
 
 #pragma once
 
-#include <chrono>
-
-#include "benchmark/result.hpp"
-#include "fwd.hpp"
-#include "net/error.hpp"
+#include "net/application.hpp"
 #include "net/event_result.hpp"
+#include "net/layer.hpp"
+#include "net/receive_policy.hpp"
+
+#include "util/byte_array.hpp"
+#include "util/error.hpp"
+#include "util/format.hpp"
+
+#include <chrono>
+#include <iostream>
 
 namespace benchmark::application {
 
-struct output {
-  output(result_ptr results, size_t byte_per_second)
-    : results_(std::move(results)), byte_per_second_(byte_per_second) {
+class output : public net::application {
+  static constexpr const std::size_t max_read_size = 8096;
+
+public:
+  output(net::layer& parent) : parent_{parent} {
     uint8_t b = 0;
-    for (size_t i = 0; i < 256; ++i)
-      data_.emplace_back(std::byte(b++));
+    for (auto& v : data_)
+      v = std::byte(b++);
   }
 
-  template <class Parent>
-  net::error init(Parent& parent) {
-    using namespace std::chrono_literals;
-    parent.configure_next_read(net::receive_policy::up_to(8096));
-    parent.set_timeout_in(1s, 0);
-    return net::none;
+  util::error init() override {
+    parent_.configure_next_read(net::receive_policy::up_to(max_read_size));
+    parent_.set_timeout_in(std::chrono::seconds(1));
+    return util::none;
   }
 
-  template <class Parent>
-  net::event_result produce(Parent& parent) {
-    auto& buf = parent.write_buffer();
+  bool has_more_data() override {
+    return true;
+  }
+
+  net::event_result produce() override {
+    auto& buf = parent_.write_buffer();
     buf.insert(buf.end(), data_.begin(), data_.end());
     byte_produced_ += data_.size();
     return net::event_result::ok;
   }
 
-  bool has_more_data() {
-    return byte_produced_ < byte_per_second_;
-  }
-
-  template <class Parent>
-  net::event_result consume(Parent& parent, util::const_byte_span data) {
-    parent.configure_next_read(net::receive_policy::up_to(8096));
+  net::event_result consume(util::const_byte_span data) override {
+    parent_.configure_next_read(net::receive_policy::up_to(max_read_size));
     byte_received_ += data.size();
     return net::event_result::ok;
   }
 
-  template <class Parent>
-  net::event_result handle_timeout(Parent& parent, uint64_t) {
-    using namespace std::chrono_literals;
-    parent.set_timeout_in(1s, 0);
-    results_->update(byte_produced_, byte_received_);
+  net::event_result handle_timeout(uint64_t) override {
+    parent_.set_timeout_in(std::chrono::seconds(1));
+    std::cout << util::format("Received = {0}, Produced = {1}", byte_received_,
+                              byte_produced_)
+              << std::endl;
     byte_received_ = 0;
     byte_produced_ = 0;
-    parent.register_writing();
+    parent_.register_writing();
     return net::event_result::ok;
   }
 
 private:
-  result_ptr results_;
-  util::byte_buffer data_;
-  const size_t byte_per_second_;
+  net::layer& parent_;
+  util::byte_array<256> data_;
   size_t byte_produced_ = 0;
   size_t byte_received_ = 0;
 };

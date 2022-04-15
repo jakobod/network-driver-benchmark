@@ -50,5 +50,5 @@ macro(add_target name)
 endmacro()
 
 add_target(epoll_mpx)
-add_target(multithreaded_epoll_mpx)
-add_target(multithreaded_epoll_mpx_test)
+# add_target(multithreaded_epoll_mpx)
+# add_target(multithreaded_epoll_mpx_test)
