@@ -68,7 +68,7 @@ append_cache_entry() {
 set_build_flag() {
   FlagName=''
   case "$1" in
-    testing)                 FlagName='LIB_NET_ENABLE_TESTS' ;;
+    googlebenchmark)         FlagName='LIB_NET_USE_GOOGLEBENCHMARK' ;;
     prefer-pthread-flag)     FlagName='THREADS_PREFER_PTHREAD_FLAG' ;;
     *)
       echo "Invalid flag '$1'.  Try $0 --help to see available options."

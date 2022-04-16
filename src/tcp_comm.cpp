@@ -48,7 +48,7 @@ multiplexer_ptr make_client(uint16_t port) {
   if (auto err = get_error(mpx_res))
     handle_error(*err);
   auto mpx = std::get<multiplexer_ptr>(mpx_res);
-  net::ip::v4_endpoint ep{net::ip::v4_address::any, port};
+  net::ip::v4_endpoint ep{net::ip::v4_address::localhost, port};
   if (auto err = mpx->tcp_connect<output_manager>(ep, operation::read_write))
     handle_error(err);
   mpx->start();
