@@ -5,8 +5,9 @@
 #include "benchmark/application/mirror.hpp"
 #include "benchmark/application/output.hpp"
 
-#include "net/epoll_multiplexer.hpp"
 #include "net/fwd.hpp"
+#include "net/multiplexer.hpp"
+#include "net/multiplexer_impl.hpp"
 #include "net/socket_manager_factory.hpp"
 #include "net/stream_transport.hpp"
 #include "net/tls.hpp"
@@ -25,7 +26,8 @@ using namespace std::chrono_literals;
 using benchmark::application::mirror;
 using benchmark::application::output;
 
-static constexpr size_t unlimited = std::numeric_limits<size_t>::max();
+[[maybe_unused]] static constexpr size_t unlimited
+  = std::numeric_limits<size_t>::max();
 
 [[noreturn]] void handle_error(const std::string& msg) {
   std::cerr << "ERROR: " << msg << std::endl;
@@ -44,8 +46,8 @@ struct mirror_manager_factory : public socket_manager_factory {
 
   socket_manager_ptr make(net::socket handle, multiplexer* mpx) override {
     using mirror_manager = stream_transport<transport_adaptor<tls<mirror>>>;
-    return std::make_shared<mirror_manager>(socket_cast<stream_socket>(handle),
-                                            mpx, ctx_, is_client_);
+    return util::make_intrusive<mirror_manager>(
+      socket_cast<stream_socket>(handle), mpx, ctx_, is_client_);
   }
 
 private:
@@ -55,7 +57,7 @@ private:
 
 multiplexer_ptr make_client(uint16_t port, openssl::tls_context& ctx) {
   using output_manager = stream_transport<transport_adaptor<tls<output>>>;
-  auto mpx_res = make_epoll_multiplexer(nullptr);
+  auto mpx_res = make_multiplexer(nullptr);
   if (auto err = get_error(mpx_res))
     handle_error(*err);
   auto mpx = std::get<multiplexer_ptr>(mpx_res);
@@ -69,7 +71,7 @@ multiplexer_ptr make_client(uint16_t port, openssl::tls_context& ctx) {
 
 multiplexer_ptr make_server(openssl::tls_context& ctx) {
   auto factory = std::make_shared<mirror_manager_factory>(ctx, false);
-  auto mpx_res = make_epoll_multiplexer(std::move(factory));
+  auto mpx_res = make_multiplexer(std::move(factory));
   if (auto err = get_error(mpx_res))
     handle_error(*err);
   auto mpx = std::get<multiplexer_ptr>(mpx_res);

@@ -6,6 +6,7 @@
 #pragma once
 
 #include "net/fwd.hpp"
+#include "util/fwd.hpp"
 
 #include "net/application.hpp"
 #include "net/event_result.hpp"
@@ -13,6 +14,7 @@
 #include "net/receive_policy.hpp"
 
 #include "util/byte_span.hpp"
+#include "util/config.hpp"
 #include "util/error.hpp"
 
 namespace benchmark::application {
@@ -25,7 +27,7 @@ public:
     // nop
   }
 
-  util::error init() override {
+  util::error init(const util::config&) override {
     parent_.configure_next_read(net::receive_policy::up_to(max_read_amount));
     return util::none;
   }

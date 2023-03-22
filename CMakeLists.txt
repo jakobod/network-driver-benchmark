@@ -19,6 +19,11 @@ message (STATUS "Build type ${CMAKE_BUILD_TYPE}")
 
 # -- fetch network-driver repo -------------------------------------------------
 
+if(LIB_NET_LOG_LEVEL)
+  message(STATUS "Logging enabled: ${LIB_NET_LOG_LEVEL}")
+  add_compile_definitions(NET_LOG_LEVEL=${LIB_NET_LOG_LEVEL})
+endif()
+
 FetchContent_Declare(
   network-driver
   GIT_REPOSITORY https://github.com/jakobod/network-driver.git
@@ -40,7 +45,7 @@ add_library(lib_net_benchmark_obj OBJECT
             ${LIB_NET_BENCHMARK_HEADERS} ${LIB_NET_BENCHMARK_SOURCES})
 set_property(TARGET lib_net_benchmark_obj PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_include_directories(lib_net_benchmark_obj PRIVATE
-                           "${network-driver_SOURCE_DIR}/header"
+                           "${network-driver_SOURCE_DIR}/libnet"
                            "${CMAKE_CURRENT_SOURCE_DIR}/header")
 
 # -- add benchmark -------------------------------------------------------------
@@ -61,12 +66,10 @@ if (LIB_NET_USE_GOOGLEBENCHMARK)
   )
 
   target_include_directories(lib_net_benchmark PRIVATE                              
-    "${network-driver_SOURCE_DIR}/header"
+    "${network-driver_SOURCE_DIR}/libnet"
     "${CMAKE_CURRENT_SOURCE_DIR}/header")
 
   target_link_libraries(lib_net_benchmark PRIVATE 
-    benchmark::benchmark
-    benchmark::benchmark_main
     net
     lib_net_benchmark_obj
   )
@@ -85,12 +88,12 @@ endif()
 macro(add_target name)
   add_executable(${name} "src/${name}.cpp")
   target_include_directories(${name} PRIVATE 
-                             "${network-driver_SOURCE_DIR}/header"
+                             "${network-driver_SOURCE_DIR}/libnet"
                              "${CMAKE_CURRENT_SOURCE_DIR}/header")
   target_link_libraries(${name} PRIVATE net lib_net_benchmark_obj)
 endmacro()
 
 add_target(tcp_comm)
-add_target(tls_comm)
+# add_target(tls_comm)
 # add_target(multithreaded_epoll_mpx)
 # add_target(multithreaded_epoll_mpx_test)

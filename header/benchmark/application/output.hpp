@@ -11,6 +11,7 @@
 #include "net/receive_policy.hpp"
 
 #include "util/byte_array.hpp"
+#include "util/config.hpp"
 #include "util/error.hpp"
 #include "util/format.hpp"
 
@@ -29,7 +30,7 @@ public:
       v = std::byte(b++);
   }
 
-  util::error init() override {
+  util::error init(const util::config&) override {
     parent_.configure_next_read(net::receive_policy::up_to(max_read_size));
     parent_.set_timeout_in(std::chrono::seconds(1));
     return util::none;
